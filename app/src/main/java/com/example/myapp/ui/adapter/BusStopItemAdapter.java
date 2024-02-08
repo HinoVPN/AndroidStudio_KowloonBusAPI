@@ -27,9 +27,7 @@ public class BusStopItemAdapter extends RecyclerView.Adapter<BusStopItemAdapter.
     private BusRouteInfoFragment.OnItemClickListener clickListener;
     private final ArrayList<BusRouteStopDetail> stopList;
     private Integer currentPos;
-
     private ArrayList<BusRouteStopETAInfo> currentETAList = new ArrayList<>();
-
 
     public BusStopItemAdapter(ArrayList<BusRouteStopDetail> stopList, BusRouteInfoFragment.OnItemClickListener listener){
         super();
@@ -37,8 +35,6 @@ public class BusStopItemAdapter extends RecyclerView.Adapter<BusStopItemAdapter.
         this.currentPos = -1;
         this.clickListener = listener;
     }
-
-
 
     @NonNull
     @Override
@@ -78,12 +74,6 @@ public class BusStopItemAdapter extends RecyclerView.Adapter<BusStopItemAdapter.
         void bind(BusRouteStopDetail detail) {
             binding.setBusRouteStopDetail(detail);
             binding.executePendingBindings();
-        }
-
-        void setETA(String eta1, String eta2, String eta3){
-            binding.setEta1(eta1);
-            binding.setEta2(eta2);
-            binding.setEta3(eta3);
         }
 
     }
@@ -126,18 +116,18 @@ public class BusStopItemAdapter extends RecyclerView.Adapter<BusStopItemAdapter.
         String targetDateTimeString;
         LocalDateTime targetDateTime;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            if(this.currentPos >= 0 && this.currentETAList.size() > 0){
+            if(this.currentPos >= 0 && this.currentETAList.size() == 3){
                 targetDateTimeString = this.currentETAList.get(0).eta;
                 targetDateTime = LocalDateTime.parse(targetDateTimeString, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                String eta1 = getMinutesFromNow(targetDateTime) == 0? "1": String.valueOf(getMinutesFromNow(targetDateTime));
+                String eta1 = getMinutesFromNow(targetDateTime) == 0? "-": String.valueOf(getMinutesFromNow(targetDateTime));
 
                 targetDateTimeString = this.currentETAList.get(1).eta;
                 targetDateTime = LocalDateTime.parse(targetDateTimeString, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                String eta2 = getMinutesFromNow(targetDateTime) == 0? "1": String.valueOf(getMinutesFromNow(targetDateTime));
+                String eta2 = getMinutesFromNow(targetDateTime) == 0? "-": String.valueOf(getMinutesFromNow(targetDateTime));
 
                 targetDateTimeString = this.currentETAList.get(2).eta;
                 targetDateTime = LocalDateTime.parse(targetDateTimeString, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                String eta3 = getMinutesFromNow(targetDateTime) == 0? "1": String.valueOf(getMinutesFromNow(targetDateTime));
+                String eta3 = getMinutesFromNow(targetDateTime) == 0? "-": String.valueOf(getMinutesFromNow(targetDateTime));
 
                 binding.setEta1(eta1);
                 binding.setEta2(eta2);
@@ -180,8 +170,5 @@ public class BusStopItemAdapter extends RecyclerView.Adapter<BusStopItemAdapter.
             return Objects.equals(oldRepo,newRepo);
         }
     }
-
-
-
 
 }

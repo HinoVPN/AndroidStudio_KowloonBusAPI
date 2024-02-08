@@ -4,6 +4,7 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -24,6 +25,12 @@ import com.example.myapp.factory.BusRouteListViewModelFactory;
 import com.example.myapp.ui.adapter.BusRouteListAdapter;
 import com.example.myapp.ui.adapter.BusStopItemAdapter;
 import com.example.myapp.viewmodel.BusRouteViewModel;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +52,10 @@ public class BusRouteInfoFragment extends Fragment {
 
     private ArrayList<BusRouteStopDetail> tempList = new ArrayList<>();
     private BusStopItemAdapter adapter;
+
+    private GoogleMap gMap;
+
+
 
     public interface OnItemClickListener {
         void onItemClick(int position);
@@ -126,8 +137,23 @@ public class BusRouteInfoFragment extends Fragment {
 
         timer.schedule(timerTask,1);
 
+
+//        AppCompatActivity activity = (AppCompatActivity) getContext();
+//        SupportMapFragment mapFragment = (SupportMapFragment) activity.getSupportFragmentManager().findFragmentById(R.id.fragmentContainerView);
+//        mapFragment.getMapAsync(this);
+
         return binding.getRoot();
     }
+
+//    @Override
+//    public void onMapReady(@NonNull GoogleMap googleMap) {
+//        this.gMap = googleMap;
+//
+//        LatLng mapIndia = new LatLng(20.5937,78.9629);
+//        this.gMap.addMarker(new MarkerOptions().position(mapIndia));
+//        this.gMap.moveCamera(CameraUpdateFactory.newLatLng(mapIndia));
+//    }
+
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
