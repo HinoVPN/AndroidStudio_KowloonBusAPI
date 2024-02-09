@@ -88,6 +88,8 @@ public class BusStopItemAdapter extends RecyclerView.Adapter<BusStopItemAdapter.
         this.stopList.clear();
         this.stopList.addAll(newItems);
         result.dispatchUpdatesTo(this);
+
+        System.out.println("Update Bus Stop List");
     }
 
     public void updateCurrentPos(Integer pos){

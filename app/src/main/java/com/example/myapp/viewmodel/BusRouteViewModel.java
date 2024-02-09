@@ -60,9 +60,9 @@ public class BusRouteViewModel extends ViewModel {
         busRouteModel.searchRouteStopListByRoute(route,direction,service_type,new BusRouteModel.onRouteStopDataReadyCallback(){
             @Override
             public void onDataReady(List<BusRouteStopInfo> data) {
+                System.out.println("Searched All Stop ID");
                 currentRouteStopList.setValue(data);
                 searchBusRouteStopDetailByStop();
-                isLoading.set(false);
             }
         });
     }
@@ -70,17 +70,19 @@ public class BusRouteViewModel extends ViewModel {
     public void searchBusRouteStopDetailByStop(){
         AtomicInteger completionCounter = new AtomicInteger(0);
         int totalRequests = currentRouteStopList.getValue().size();
-        isLoading.set(true);
         ArrayList<BusRouteStopDetail> details = new ArrayList<>();
 
         for (BusRouteStopInfo info: this.getCurrentRouteStopList().getValue()) {
             details.add(null);
+            System.out.println(info.seq);
             busRouteModel.searchBusRouteStopDetail(info.stop,new BusRouteModel.onRouteStopDetailDataReadyCallback(){
                 @Override
                 public void onDataReady(BusRouteStopDetail data) {
                     details.set(Integer.parseInt(info.seq)-1,data);
+//                    System.out.println(info.seq + data.nameTc);
                     int count = completionCounter.incrementAndGet();
                     if (count == totalRequests) {
+                        System.out.println("Get All the Stop");
                         currentRouteStopDetailList.setValue(details);
                         isLoading.set(false);
                     }

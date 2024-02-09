@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Looper;
 import android.view.LayoutInflater;
@@ -29,7 +30,6 @@ import com.example.myapp.factory.BusRouteListViewModelFactory;
 import com.example.myapp.ui.adapter.BusStopItemAdapter;
 import com.example.myapp.util.LocationUtils;
 import com.example.myapp.viewmodel.BusRouteViewModel;
-import com.google.android.gms.common.api.Api;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -39,7 +39,6 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -47,6 +46,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -125,24 +125,22 @@ public class BusRouteInfoFragment extends Fragment{
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        //Data Binding to Fragment
         binding = FragmentBusRouteInfoBinding.inflate(inflater, container, false);
+
+        //Initialise view model
         viewModel = new ViewModelProvider(this, factory).get(BusRouteViewModel.class);
+
+        //binding the view model
         binding.setBusRouteViewModel(viewModel);
+
+        //Search all the bus stop detail
         viewModel.searchRouteStopListByRoute(route, direction, service_type);
 
         adapter = new BusStopItemAdapter(tempList, new OnItemClickListener() {
             @Override
             public void onItemClick(int position) {
-                oldPos = viewModel.getCurrentStopPos().getValue();
-
-                if (oldPos != -1) {
-                    timer.cancel();
-                }
-
-                viewModel.setCurrentStopPos(position == oldPos ? -1 : position);
-                adapter.updateCurrentPos(position == oldPos ? -1 : position);
-                adapter.notifyItemChanged(oldPos);
-                adapter.notifyItemChanged(position);
+                onStopListItemAndMapMarkerClick(position);
             }
         });
 
@@ -166,21 +164,28 @@ public class BusRouteInfoFragment extends Fragment{
         viewModel.getStopDetailList().observe(getViewLifecycleOwner(), new Observer<List<BusRouteStopDetail>>() {
             @Override
             public void onChanged(List<BusRouteStopDetail> stopDetailList) {
+                System.out.println("Detect Stop Detail List changed");
+
+                //Add All Bus Stop into adapter
                 adapter.swapItems((ArrayList<BusRouteStopDetail>) stopDetailList);
                 currentStopList = stopDetailList;
 
-                for(BusRouteStopDetail detail: currentStopList){
-                    LatLng mapStop = new LatLng(detail.latitude,detail.longitude);
-                    gMap.addMarker(new MarkerOptions().position(mapStop));
+                //Add marker to the map
+                for(int i = 0; i<currentStopList.size(); i++){
+                    LatLng mapStop = new LatLng(currentStopList.get(i).latitude,currentStopList.get(i).longitude);
+                    gMap.addMarker(new MarkerOptions().position(mapStop)).setTitle(String.valueOf(i));
                 }
 
-//                BusRouteStopDetail closestStop = currentStopList.get(LocationUtils.findClosestBusStopIndex(currentLocation,currentStopList));
-//                LatLng mapStop = new LatLng(closestStop.latitude,closestStop.longitude);
-//                gMap.addMarker(new MarkerOptions().position(mapStop));
+                //Find the closest stop and expend the item in the stop list
                 Integer closestStopIdx = LocationUtils.findClosestBusStopIndex(currentLocation,currentStopList);
                 viewModel.setCurrentStopPos(closestStopIdx);
                 adapter.updateCurrentPos(closestStopIdx == oldPos ? -1 : closestStopIdx);
                 adapter.notifyItemChanged(closestStopIdx);
+
+                //Move the Camera to Closest Bus Stop
+                double latitude = currentStopList.get(closestStopIdx).latitude;
+                double longitude = currentStopList.get(closestStopIdx).longitude;
+                onMoveMapCamera(latitude,longitude);
 
             }
         });
@@ -200,6 +205,7 @@ public class BusRouteInfoFragment extends Fragment{
         viewModel.getCurrentBusRouteStopETAList().observe(getViewLifecycleOwner(), new Observer<List<BusRouteStopETAInfo>>() {
             @Override
             public void onChanged(List<BusRouteStopETAInfo> infos) {
+                System.out.println("Refresh ETA");
                 adapter.updateETAList(infos);
             }
         });
@@ -225,7 +231,6 @@ public class BusRouteInfoFragment extends Fragment{
             };
 
             fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
-
         }
 
         Task<Location> task = fusedLocationProviderClient.getLastLocation();
@@ -235,35 +240,53 @@ public class BusRouteInfoFragment extends Fragment{
                 if (location != null) {
                     currentLocation = location;
 
-                    SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.fragmentContainerView);
-                    mapFragment.getMapAsync(new OnMapReadyCallback() {
-                        @Override
-                        public void onMapReady(@NonNull GoogleMap googleMap) {
-                            gMap = googleMap;
-                            gMap.getUiSettings().setMyLocationButtonEnabled(true);
-                            if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                                return;
-                            }
-                            gMap.setMyLocationEnabled(true);
-                            gMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
-                                @Override
-                                public boolean onMyLocationButtonClick() {
-                                    CheckGps();
-                                    return false;
-                                }
-                            });
-                            LatLng mapHongKong = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-//                            gMap.addMarker(new MarkerOptions().position(mapHongKong));
-                            gMap.moveCamera(CameraUpdateFactory.newLatLng(mapHongKong));
-                            gMap.animateCamera(CameraUpdateFactory.zoomTo(17.0f));
-
-
-                        }
-                    });
-
+                    onLoadGoogleMap();
                 }
             }
         });
+    }
+
+    private void onLoadGoogleMap(){
+        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.fragmentContainerView);
+        mapFragment.getMapAsync(new OnMapReadyCallback() {
+            @Override
+            public void onMapReady(@NonNull GoogleMap googleMap) {
+                gMap = googleMap;
+                gMap.getUiSettings().setMyLocationButtonEnabled(true);
+                if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+                gMap.setMyLocationEnabled(true);
+                gMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+                    @Override
+                    public boolean onMyLocationButtonClick() {
+//                                    CheckGps();
+                        return false;
+                    }
+                });
+
+                onMoveMapCamera(currentLocation.getLatitude(),currentLocation.getLongitude());
+
+                gMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+                    @Override
+                    public boolean onMarkerClick(@NonNull Marker marker) {
+                        int markerIdx = Integer.parseInt(marker.getTitle());
+                        onStopListItemAndMapMarkerClick(markerIdx);
+                        onMoveMapCamera(marker.getPosition().latitude,marker.getPosition().longitude);
+                        return false;
+                    }
+                });
+
+                System.out.println("Map ready");
+            }
+        });
+
+    }
+
+    private void onMoveMapCamera(double latitude,double longitude){
+        LatLng latLng = new LatLng(latitude, longitude);
+        gMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        gMap.animateCamera(CameraUpdateFactory.zoomTo(17.0f));
     }
 
     private void CheckGps() {
@@ -297,6 +320,34 @@ public class BusRouteInfoFragment extends Fragment{
                 }
             }
         });
+    }
+
+    public void onStopListItemAndMapMarkerClick(int position){
+        oldPos = viewModel.getCurrentStopPos().getValue();
+
+        //timer reset
+        if (oldPos != -1) {
+            timer.cancel();
+        }
+
+        //StopList expend the selected stop
+        viewModel.setCurrentStopPos(position == oldPos ? -1 : position);
+        adapter.updateCurrentPos(position == oldPos ? -1 : position);
+        adapter.notifyItemChanged(oldPos);
+        adapter.notifyItemChanged(position);
+
+        //Scroll to selected bus stop
+        int clickedPosition =  position;
+        RecyclerView.LayoutManager layoutManager = binding.stopList.getLayoutManager();
+        if (layoutManager instanceof LinearLayoutManager) {
+            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) layoutManager;
+            linearLayoutManager.scrollToPositionWithOffset(clickedPosition, 0);
+        }
+
+        //Map move to the selected bus stop
+        double latitude = currentStopList.get(position).latitude;
+        double longitude = currentStopList.get(position).longitude;
+        gMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(latitude, longitude)));
     }
 
 
